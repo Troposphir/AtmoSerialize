@@ -33,6 +33,9 @@ namespace AtmoSerialize {
             var writer = new BinaryWriter(stream);
             map.SerializeContents(writer);
             writer.Flush();
+            if (compress) {
+                ((DeflaterOutputStream)stream).Finish();
+            }
         }
 
         /// <summary>
