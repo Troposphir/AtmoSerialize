@@ -15,7 +15,7 @@ using (var stream = File.OpenRead("draft.atmo")) {
 
 using (var stream = File.OpenWrite("out.atmo")) {
 	var map = new Map(5);
-	var item = new Item("mi_flag_start", new Vector(0,0,0), new Vector(0,0,0), 1f);
+	var item = new MapItem("mi_flag_start", new Vector(0,0,0), new Vector(0,0,0), 1f);
 	map.Resources.Add(item.ResourceName);
 	map.Items.Add(item);
 
@@ -23,4 +23,4 @@ using (var stream = File.OpenWrite("out.atmo")) {
 }
 ```
 
-Asynchronous versions of `AtmoConvert.Serialze` and `AtmoConvert.Deserialize` are also available.
+Asynchronous versions of `AtmoConvert.Serialize` and `AtmoConvert.Deserialize` are also available.
