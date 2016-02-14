@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using AtmoSerialize.Internal;
 using AtmoSerialize.Internal.Serializables;
 
@@ -25,6 +26,10 @@ namespace AtmoSerialize {
             InternalConverter.Serialize(stream, oldMap);
         }
 
+        public static async Task SerializeAsync(Stream stream, Map map, bool compress = true) {
+            await Task.Run(() => Serialize(stream, map, compress));
+        }
+
         public static Map Deserialize(Stream stream) {
             var oldMap = InternalConverter.Deserialize(stream);
 
@@ -41,6 +46,10 @@ namespace AtmoSerialize {
             }
 
             return map;
+        }
+
+        public static async Task<Map> DeserializeAsync(Stream stream) {
+            return await Task.Run(() => Deserialize(stream));
         }
 
         private static Dictionary<string, IAtmoProperty> PropertizeStrings(Dictionary<string, string> properties) {
