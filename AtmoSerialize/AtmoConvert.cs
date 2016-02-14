@@ -1,113 +1,98 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
-using System.Threading.Tasks;
-using ICSharpCode.SharpZipLib.Zip.Compression;
-using ICSharpCode.SharpZipLib.Zip.Compression.Streams;
+using System.Linq;
+using System.Text.RegularExpressions;
+using AtmoSerialize.Internal;
+using AtmoSerialize.Internal.Serializables;
 
 namespace AtmoSerialize {
-    /// <summary>
-    /// Provides serialization methods to write and read maps.
-    /// All methods are non-greedy, this means they expect the stream to be on
-    /// a position such as it immediately starts with the map data, and will not
-    /// consume any extra bytes from it, assuming a well-formed map.
-    /// 
-    /// These methods will not close the stream after reading or writing.
-    /// </summary>
     public static class AtmoConvert {
-        /// <summary>
-        /// Writes the contents of the map to the given stream.
-        /// </summary>
-        /// <param name="stream">The destination stream.</param>
-        /// <param name="map">The map to be serialized.</param>
-        /// <param name="compress">If true, will compress the map data.</param>
-        public static void Serialize(Stream stream, Map map, bool compress) {
-            var error = ValidateSerializeParameters(stream, map, compress);
-            if (error != null) {
-                throw error;
-            }
-
-            WriteHeader(stream, map, compress);
-            if (compress) {
-                stream = new DeflaterOutputStream(stream, new Deflater(Deflater.BEST_COMPRESSION));
-            }
-            var writer = new BinaryWriter(stream);
-            map.SerializeContents(writer);
-            writer.Flush();
+        public static void Serialize(Stream stream, Map map, bool compress = true) {
+            var oldMap = new Internal.Map(5, compress) {
+                Rulebook = new Internal.Serializables.Rulebook {
+                    Rules = StringifyProperties(map.Rulebook)
+                }
+            };
+            oldMap.Items.AddRange(map.Where(i => i != null).Select(i => new MapItem {
+                ResourceName = i.ResourceName,
+                Position = ToFloatvector(i.Position),
+                Rotation = ToByteVector(i.Rotation),
+                Scale = i.Scale,
+                Properties = StringifyProperties(i.Properties),
+                Rulebook = null
+            }));
+            InternalConverter.Serialize(stream, oldMap);
         }
 
-        /// <summary>
-        /// Asynchronously writes the contents of the map to the given stream.
-        /// </summary>
-        /// <param name="stream">The destination stream.</param>
-        /// <param name="map">The map to be serialized.</param>
-        /// <param name="compress">If true, will compress the map data.</param>
-        /// <returns>A task that is completed once writing finishes.</returns>
-        public static async Task SerializeAsync(Stream stream, Map map, bool compress) {
-            var error = ValidateSerializeParameters(stream, map, compress);
-            if (error != null) {
-                throw error;
-            }
-
-            await Task.Run(() => Serialize(stream, map, compress));
-        }
-
-        /// <summary>
-        /// Reads a <see cref="Map"/> instance from a stream.
-        /// </summary>
-        /// <param name="stream">A stream, positioned at the exact start of the header.</param>
-        /// <returns>The object representation of the Map.</returns>
         public static Map Deserialize(Stream stream) {
-            var error = ValidateDeserializeParameters(stream);
-            if (error != null) {
-                throw error;
+            var oldMap = InternalConverter.Deserialize(stream);
+
+            var map = new Map {
+                Rulebook = new Rulebook(PropertizeStrings(oldMap.Rulebook.Rules))
+            };
+            foreach (var mapItem in oldMap.Items) {
+                map.Add(new Item(mapItem.ResourceName) {
+                    Position = MakeVector(mapItem.Position),
+                    Rotation = MakeVector(mapItem.Rotation),
+                    Scale = mapItem.Scale,
+                    Properties = PropertizeStrings(mapItem.Properties)
+                });
             }
 
-            return Deserializer.ReadMap(stream);
+            return map;
         }
 
-        /// <summary>
-        /// Asynchronously reads a <see cref="Map"/> instance from a stream.
-        /// </summary>
-        /// <param name="stream">A stream, positioned at the exact start of the header.</param>
-        /// <returns>A task which resolves to the object representation of the Map.</returns>
-        public static async Task<Map> DeserializeAsync(Stream stream) {
-            var error = ValidateDeserializeParameters(stream);
-            if (error != null) {
-                throw error;
+        private static Dictionary<string, IAtmoProperty> PropertizeStrings(Dictionary<string, string> properties) {
+            var converted = new Dictionary<string, IAtmoProperty>(properties.Count);
+            foreach (var kvp in properties) {
+                switch (kvp.Key) {
+                    case "infoContent":
+                        converted[kvp.Key] = new TextProperty(kvp.Value);
+                        break;
+                    case "detectPlayers":
+                        converted[kvp.Key] = new PlayerTargetProperty(kvp.Value);
+                        break;
+                    case "countType":
+                        converted[kvp.Key] = new CountTypeProperty(kvp.Value);
+                        break;
+                    default:
+                        var lowerKey = kvp.Key.ToLowerInvariant();
+                        var lowerValue = kvp.Value.ToLowerInvariant();
+                        if (new[] {"false", "true"}.Contains(lowerValue)) {
+                            converted[kvp.Key] = new BooleanProperty(kvp.Value);
+                        } else if (lowerKey.EndsWith("trigger")) {
+                            converted[kvp.Key] = new TriggerProperty(kvp.Value);
+                        } else if (Regex.IsMatch(lowerValue, @"^-?\d+$")) {
+                            converted[kvp.Key] = new IntegerProperty(kvp.Value);
+                        } else if (Regex.IsMatch(lowerValue, @"^-?\d*\.\d*$")) {
+                            converted[kvp.Key] = new FloatProperty(kvp.Value);
+                        } else {
+                            converted[kvp.Key] = new GenericProperty(kvp.Value);
+                        }
+                        break;
+                }
             }
-
-            return await Task.Run(() => Deserialize(stream));
+            return converted;
         }
 
-        private static void WriteHeader(Stream stream, Map map, bool compress) {
-            var writer = new BinaryWriter(stream);
-            writer.Write(Deserializer.HeaderFormat);
-            writer.Write(map.Version.ToString());
-            writer.Write(compress);
-            writer.Flush();
+        private static Dictionary<string, string> StringifyProperties(IDictionary<string, IAtmoProperty> properties) {
+            return properties.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.ToRaw());
         }
 
-        private static Exception ValidateDeserializeParameters(Stream stream) {
-            if (stream == null) {
-                return new ArgumentException($"{nameof(stream)} must not be null.");
-            }
-            if (!stream.CanRead) {
-                return new ArgumentException($"{nameof(stream)} must be writable.");
-            }
-            return null;
-        }
+        private static ByteVector ToByteVector(Vector vector) => new ByteVector {
+            X = (byte)(vector.X / 2),
+            Y = (byte)(vector.Y / 2),
+            Z = (byte)(vector.Z / 2)
+        };
+        
+        private static FloatVector ToFloatvector(Vector vector) => new FloatVector {
+            X = vector.X,
+            Y = vector.Y,
+            Z = vector.Z
+        };
 
-        private static Exception ValidateSerializeParameters(Stream stream, Map map, bool compress) {
-            if (stream == null) {
-                return new ArgumentException($"{nameof(stream)} must not be null.");
-            }
-            if (!stream.CanWrite) {
-                return new ArgumentException($"{nameof(stream)} must be writable.");
-            }
-            if (map == null) {
-                return new ArgumentException($"{nameof(map)} must not be null.");
-            }
-            return null;
-        }
+        private static Vector MakeVector(FloatVector vector) => new Vector(vector.X, vector.Y, vector.Z);
+        private static Vector MakeVector(ByteVector vector) => new Vector(vector.X, vector.Y, vector.Z) * 2;
     }
 }

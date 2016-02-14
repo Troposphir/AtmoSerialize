@@ -35,7 +35,9 @@
       <HintPath>E:\Games\Atmosphir_\Atmosphir_Data\Atmosphir_Data\Managed\ICSharpCode.SharpZipLib.dll</HintPath>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.ComponentModel.DataAnnotations" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Data.Entity" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -45,13 +47,47 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AtmoConvert.cs" />
-    <Compile Include="IAtmoSerializable.cs" />
+    <Compile Include="AtmoProperties\BooleanProperty.cs" />
+    <Compile Include="AtmoProperties\ComparsionProperty.cs" />
+    <Compile Include="AtmoProperties\CountTypeProperty.cs" />
+    <Compile Include="AtmoProperties\EnumProperty.cs" />
+    <Compile Include="AtmoProperties\PlayerTargetProperty.cs" />
+    <Compile Include="AtmoProperties\TextProperty.cs" />
+    <Compile Include="Comparsion.cs" />
+    <Compile Include="Constants.cs" />
+    <Compile Include="CountType.cs" />
+    <Compile Include="AtmoProperties\IntegerProperty.cs" />
+    <Compile Include="AtmoProperties\FloatProperty.cs" />
+    <Compile Include="AtmoProperties\GenericProperty.cs" />
+    <Compile Include="Internal\AtmoReader.cs" />
+    <Compile Include="Internal\AtmoWriter.cs" />
+    <Compile Include="Extensions\FloatExtensions.cs" />
+    <Compile Include="Internal\IAtmoSerializable.cs" />
+    <Compile Include="Internal\InternalConverter.cs" />
+    <Compile Include="Internal\Map.cs" />
+    <Compile Include="Internal\ReferenceSolver.cs" />
+    <Compile Include="Internal\Serializables\MapBody.cs" />
+    <Compile Include="Internal\Serializables\MapHeader.cs" />
+    <Compile Include="Internal\Serializables\MapItem.cs" />
+    <Compile Include="Internal\Serializables\Rulebook.cs" />
+    <Compile Include="Internal\Serializables\Vector.cs" />
+    <Compile Include="Item.cs" />
     <Compile Include="Map.cs" />
-    <Compile Include="MapItem.cs" />
+    <Compile Include="Operator.cs" />
+    <Compile Include="PlayerTarget.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="IAtmoProperty.cs" />
+    <Compile Include="Quaternion.cs" />
     <Compile Include="Rulebook.cs" />
-    <Compile Include="Deserializer.cs" />
+    <Compile Include="AtmoProperties\TriggerProperty.cs" />
+    <Compile Include="TriggerCondition.cs" />
     <Compile Include="Vector.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
